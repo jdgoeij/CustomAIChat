@@ -144,7 +144,7 @@ model_list:
 # ROUTER SETTINGS (load balancing, fallbacks)
 # =============================================================================
 router_settings:
-  routing_strategy: "priority"  # options: "priority", "round_robin"
+  routing_strategy: "cost-based-routing"  # options: "priority", "round_robin"
   num_retries: 2
   timeout: 120
   # Fallback: if Azure fails, try Ollama local models
