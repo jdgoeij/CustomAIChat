@@ -66,7 +66,7 @@ model_list:
       model: azure/gpt-5.3-codex
       api_base: os.environ/AZURE_API_BASE
       api_key: os.environ/AZURE_API_KEY
-      api_version: os.environ/AZURE_API_VERSION
+      api_version: preview
 
   - model_name: azure/gpt-5.4-mini
     litellm_params:
