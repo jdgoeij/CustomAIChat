@@ -276,8 +276,7 @@ services:
     environment:
       SEARXNG_SECRET: ${SEARXNG_SECRET}
     volumes:
-      - ./config/searxng/settings.yml:/etc/searxng/settings.yml:ro
-      - ./data/searxng:/etc/searxng/data
+      - ./config/searxng:/etc/searxng:rw
     ports:
       - "${SEARXNG_PORT:-8080}:8080"
     networks:
@@ -302,8 +301,10 @@ services:
       # Disable direct Ollama connection (routed through LiteLLM instead)
       OLLAMA_BASE_URL: ""
       # Web search
-      ENABLE_RAG_WEB_SEARCH: "True"
+      ENABLE_RAG_WEB_SEARCH: True
       RAG_WEB_SEARCH_ENGINE: searxng
+      RAG_WEB_SEARCH_RESULT_COUNT: 3
+      RAG_WEB_SEARCH_CONCURRENT_REQUESTS: 10
       SEARXNG_QUERY_URL: "http://searxng:8080/search?q=<query>"
       # Speech-to-Text (built-in Whisper)
       AUDIO_STT_ENGINE: ""
