@@ -76,7 +76,7 @@ services:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     volumes:
-      - ./data/clickhouse:/var/lib/clickhouse
+      - clickhouse_data:/var/lib/clickhouse
     networks:
       - backend
     healthcheck:
@@ -186,6 +186,7 @@ services:
       NEXTAUTH_SECRET: ${LANGFUSE_SALT}
       SALT: ${LANGFUSE_SALT}
       ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY}
+      HOSTNAME: "0.0.0.0"
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
