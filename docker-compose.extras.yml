@@ -1,5 +1,5 @@
 # =============================================================================
-# Self-Hosted AI Stack — Extras (Open Notebook, Caddy Reverse Proxy)
+# Self-Hosted AI Stack — Extras (Caddy Reverse Proxy)
 # =============================================================================
 # Usage (combine with core stack):
 #   docker compose -f docker-compose.yml -f docker-compose.extras.yml up -d
@@ -9,29 +9,6 @@
 # =============================================================================
 
 services:
-
-  # ---------------------------------------------------------------------------
-  # Open Notebook — Self-hosted NotebookLM Alternative
-  # Docs: https://github.com/lfnovo/open-notebook
-  #
-  # Features: Document analysis, RAG, podcast generation, multi-LLM support
-  # Access: http://localhost:3002
-  # ---------------------------------------------------------------------------
-  open-notebook:
-    image: lfnovo/open-notebook:latest
-    container_name: ai-open-notebook
-    restart: unless-stopped
-    environment:
-      # Connect to LiteLLM as the LLM provider (OpenAI-compatible)
-      OPENAI_API_BASE: http://litellm:4000/v1
-      OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
-    volumes:
-      - ./data/open-notebook:/app/data
-    ports:
-      - "${OPEN_NOTEBOOK_PORT:-3002}:8000"
-    networks:
-      - frontend
-      - backend
 
   # ---------------------------------------------------------------------------
   # Caddy — Reverse Proxy with Automatic HTTPS
