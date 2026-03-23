@@ -1,0 +1,41 @@
+# =============================================================================
+# Caddy Reverse Proxy Configuration
+# =============================================================================
+# Default: localhost mode (HTTP only, for development)
+#
+# For production with HTTPS:
+#   1. Set your domain in .env: CADDY_DOMAIN=ai.example.com
+#   2. Replace "localhost" below with {$CADDY_DOMAIN}
+#   3. Ensure ports 80/443 are open and DNS points to this server
+#   4. Caddy will automatically obtain Let's Encrypt certificates
+# =============================================================================
+
+# --- OpenWebUI (main chat interface) ---
+localhost {
+	reverse_proxy openwebui:8080
+}
+
+# --- Langfuse (observability dashboard) ---
+localhost:3001 {
+	reverse_proxy langfuse-web:3000
+}
+
+# --- LiteLLM Admin (API gateway management) ---
+localhost:4000 {
+	reverse_proxy litellm:4000
+}
+
+# --- SearXNG (search engine, internal use — optional public access) ---
+localhost:8080 {
+	reverse_proxy searxng:8080
+}
+
+# --- Open Notebook (document research) ---
+localhost:3002 {
+	reverse_proxy open-notebook:8000
+}
+
+# --- ComfyUI (image generation — only if GPU stack is running) ---
+localhost:8188 {
+	reverse_proxy comfyui:8188
+}

@@ -1,0 +1,153 @@
+# =============================================================================
+# LiteLLM Proxy Configuration
+# Docs: https://docs.litellm.ai/docs/proxy/configs
+# =============================================================================
+#
+# This config defines all available models routed through LiteLLM.
+# Models appear in OpenWebUI's model selector automatically.
+#
+# After editing, restart LiteLLM: docker compose restart litellm
+# =============================================================================
+
+# --- Observability: send all calls to Langfuse ---
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+  cache: true
+  cache_params:
+    type: redis
+    host: redis
+    port: 6379
+    password: os.environ/REDIS_PASSWORD
+
+# --- Environment variable references ---
+environment_variables:
+  LANGFUSE_PUBLIC_KEY: os.environ/LANGFUSE_PUBLIC_KEY
+  LANGFUSE_SECRET_KEY: os.environ/LANGFUSE_SECRET_KEY
+  LANGFUSE_HOST: os.environ/LANGFUSE_HOST
+
+# --- General proxy settings ---
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/LITELLM_DATABASE_URL
+  alerting: ["log"]
+
+# =============================================================================
+# MODEL DEFINITIONS
+# =============================================================================
+# Each model has:
+#   model_name:  Display name in OpenWebUI
+#   litellm_params.model:  Provider-specific model identifier
+#   litellm_params.api_base/api_key:  Connection details
+#
+# Prefix conventions:
+#   azure/   → Azure OpenAI
+#   ollama/  → Local Ollama
+#   openai/  → Direct OpenAI API
+# =============================================================================
+
+model_list:
+
+  # ---------------------------------------------------------------------------
+  # AZURE OPENAI MODELS
+  # Replace deployment names with your actual Azure deployment names
+  # ---------------------------------------------------------------------------
+  - model_name: azure/gpt-5.4-nano-2
+    litellm_params:
+      model: azure/gpt-5.4-nano-2            # format: azure/<your-deployment-name>
+      api_base: os.environ/AZURE_API_BASE
+      api_key: os.environ/AZURE_API_KEY
+      api_version: os.environ/AZURE_API_VERSION
+
+  - model_name: azure/gpt-5.3-codex
+    litellm_params:
+      model: azure/gpt-5.3-codex
+      api_base: os.environ/AZURE_API_BASE
+      api_key: os.environ/AZURE_API_KEY
+      api_version: os.environ/AZURE_API_VERSION
+
+  - model_name: azure/gpt-5.4-mini
+    litellm_params:
+      model: azure/gpt-5.4-mini
+      api_base: os.environ/AZURE_API_BASE
+      api_key: os.environ/AZURE_API_KEY
+      api_version: os.environ/AZURE_API_VERSION
+
+  # --- Azure OpenAI Image Generation ---
+  - model_name: azure/gpt-image-1.5
+    litellm_params:
+      model: azure/gpt-image-1.5       # Azure OpenAI deployment name
+      api_base: os.environ/AZURE_API_BASE
+      api_key: os.environ/AZURE_API_KEY
+      api_version: os.environ/AZURE_API_VERSION
+    model_info:
+      mode: image_generation
+
+  # --- Azure AI Foundry Serverless — FLUX.2-pro ---
+  - model_name: azure/flux-2-pro
+    litellm_params:
+      model: azure_ai/FLUX.2-pro
+      api_base: os.environ/AZURE_AI_FOUNDRY_BASE
+      api_key: os.environ/AZURE_API_KEY
+    model_info:
+      mode: image_generation
+
+  # Uncomment for additional Azure deployments:
+  # - model_name: azure/gpt-4
+  #   litellm_params:
+  #     model: azure/gpt-4
+  #     api_base: os.environ/AZURE_API_BASE
+  #     api_key: os.environ/AZURE_API_KEY
+  #     api_version: os.environ/AZURE_API_VERSION
+
+  # ---------------------------------------------------------------------------
+  # OLLAMA — Local LLM Models (requires GPU compose)
+  # Models must be pulled first: docker exec ollama ollama pull <model>
+  # ---------------------------------------------------------------------------
+  # - model_name: ollama/llama3.2
+  #   litellm_params:
+  #     model: ollama/llama3.2
+  #     api_base: http://ollama:11434
+
+  # - model_name: ollama/mistral
+  #   litellm_params:
+  #     model: ollama/mistral
+  #     api_base: http://ollama:11434
+
+  # - model_name: ollama/codellama
+  #   litellm_params:
+  #     model: ollama/codellama
+  #     api_base: http://ollama:11434
+
+  # Add more Ollama models as you pull them:
+  # - model_name: ollama/phi3
+  #   litellm_params:
+  #     model: ollama/phi3
+  #     api_base: http://ollama:11434
+
+  # ---------------------------------------------------------------------------
+  # OPENAI DIRECT (optional — uncomment if you have an OpenAI API key)
+  # ---------------------------------------------------------------------------
+  # - model_name: openai/gpt-4o
+  #   litellm_params:
+  #     model: gpt-4o
+  #     api_key: os.environ/OPENAI_API_KEY
+
+  # - model_name: openai/gpt-4o-mini
+  #   litellm_params:
+  #     model: gpt-4o-mini
+  #     api_key: os.environ/OPENAI_API_KEY
+
+# =============================================================================
+# ROUTER SETTINGS (load balancing, fallbacks)
+# =============================================================================
+router_settings:
+  routing_strategy: "priority"  # options: "priority", "round_robin"
+  num_retries: 2
+  timeout: 120
+  # Fallback: if Azure fails, try Ollama local models
+  # fallbacks:
+  #   - azure/gpt-4o:
+  #       - ollama/llama3.2

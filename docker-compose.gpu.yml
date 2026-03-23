@@ -1,0 +1,106 @@
+# =============================================================================
+# Self-Hosted AI Stack — GPU Services
+# =============================================================================
+# Usage (combine with core stack):
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# Prerequisites:
+#   - NVIDIA GPU with drivers installed
+#   - NVIDIA Container Toolkit: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Ollama — Local LLM Inference
+  # Docs: https://ollama.com/
+  #
+  # Pull models after startup:
+  #   docker exec ai-ollama ollama pull llama3.2
+  #   docker exec ai-ollama ollama pull mistral
+  #   docker exec ai-ollama ollama pull codellama
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-ollama
+    restart: unless-stopped
+    volumes:
+      - ./data/ollama:/root/.ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - backend
+
+  # ---------------------------------------------------------------------------
+  # Whisper — Speech-to-Text Service
+  # Image: onerahmet/openai-whisper-asr-webservice
+  # Provides OpenAI-compatible /v1/audio/transcriptions endpoint
+  #
+  # Models: tiny, base, small, medium, large-v3
+  # GPU version used for fast transcription
+  # ---------------------------------------------------------------------------
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+    container_name: ai-whisper
+    restart: unless-stopped
+    environment:
+      ASR_MODEL: ${WHISPER_ASR_MODEL:-base}
+      ASR_ENGINE: openai_whisper
+    volumes:
+      - ./data/whisper:/root/.cache/whisper
+    ports:
+      - "${WHISPER_PORT:-9000}:9000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - backend
+
+  # ---------------------------------------------------------------------------
+  # ComfyUI — AI Image Generation (Stable Diffusion)
+  # Docs: https://github.com/comfyanonymous/ComfyUI
+  #
+  # Download models before first use:
+  #   Place .safetensors files in ./data/comfyui/models/checkpoints/
+  #   Recommended: sd_xl_base_1.0.safetensors from HuggingFace
+  #
+  # Access UI: http://localhost:8188
+  # OpenWebUI connects via the ComfyUI API for image generation
+  # ---------------------------------------------------------------------------
+  comfyui:
+    image: ghcr.io/ai-dock/comfyui:latest-cuda
+    container_name: ai-comfyui
+    restart: unless-stopped
+    environment:
+      CLI_ARGS: "--listen 0.0.0.0"
+    volumes:
+      - ./data/comfyui/models:/workspace/ComfyUI/models
+      - ./data/comfyui/output:/workspace/ComfyUI/output
+      - ./data/comfyui/custom_nodes:/workspace/ComfyUI/custom_nodes
+    ports:
+      - "${COMFYUI_PORT:-8188}:8188"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - frontend
+      - backend
+
+networks:
+  frontend:
+  backend:

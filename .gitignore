@@ -1,0 +1,15 @@
+# Data & Models - persistent volumes, never commit
+data/
+models/
+
+# Environment secrets
+.env
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Docker
+*.log
