@@ -94,14 +94,6 @@ model_list:
     model_info:
       mode: image_generation
 
-  # Uncomment for additional Azure deployments:
-  # - model_name: azure/gpt-4
-  #   litellm_params:
-  #     model: azure/gpt-4
-  #     api_base: os.environ/AZURE_API_BASE
-  #     api_key: os.environ/AZURE_API_KEY
-  #     api_version: os.environ/AZURE_API_VERSION
-
   # ---------------------------------------------------------------------------
   # OLLAMA — Local LLM Models (requires GPU compose)
   # Models must be pulled first: docker exec ollama ollama pull <model>
@@ -109,22 +101,6 @@ model_list:
   # - model_name: ollama/llama3.2
   #   litellm_params:
   #     model: ollama/llama3.2
-  #     api_base: http://ollama:11434
-
-  # - model_name: ollama/mistral
-  #   litellm_params:
-  #     model: ollama/mistral
-  #     api_base: http://ollama:11434
-
-  # - model_name: ollama/codellama
-  #   litellm_params:
-  #     model: ollama/codellama
-  #     api_base: http://ollama:11434
-
-  # Add more Ollama models as you pull them:
-  # - model_name: ollama/phi3
-  #   litellm_params:
-  #     model: ollama/phi3
   #     api_base: http://ollama:11434
 
   # ---------------------------------------------------------------------------
@@ -135,10 +111,6 @@ model_list:
   #     model: gpt-4o
   #     api_key: os.environ/OPENAI_API_KEY
 
-  # - model_name: openai/gpt-4o-mini
-  #   litellm_params:
-  #     model: gpt-4o-mini
-  #     api_key: os.environ/OPENAI_API_KEY
 
 # =============================================================================
 # ROUTER SETTINGS (load balancing, fallbacks)
