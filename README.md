@@ -7,7 +7,7 @@ A comprehensive, self-hosted AI platform running on Docker — combining the bes
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                       User Browser                           │
-│       OpenWebUI (:3000)  │  Langfuse (:3001)  │  Open Notebook (:3002)
+│       OpenWebUI (:3000)  │  Langfuse (:3001)  │  Open Notebook (:8502)
 └───────────┬──────────────┴──────────────┬─────┴─────────────┘
             │                              │
 ┌───────────▼──────────────────────────────▼───────────────────┐
@@ -20,7 +20,7 @@ A comprehensive, self-hosted AI platform running on Docker — combining the bes
 └──────────────────────────────────────────────────────────────┘
             │
 ┌───────────▼──────────────────────────────────────────────────┐
-│  PostgreSQL │ Redis │ ClickHouse │ MinIO │ SearXNG │ Whisper │
+│  PostgreSQL │ Redis │ ClickHouse │ SeaweedFS │ SearXNG │ Whisper │
 │  ComfyUI │ Ollama │ Langfuse Worker │ Caddy (optional)       │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -36,11 +36,12 @@ A comprehensive, self-hosted AI platform running on Docker — combining the bes
 | **PostgreSQL** | Database for LiteLLM + Langfuse | `5432` | core |
 | **Redis** | Caching | `6379` | core |
 | **ClickHouse** | Analytics DB for Langfuse | — | core |
-| **MinIO** | S3-compatible storage for Langfuse | — | core |
+| **SeaweedFS** | S3-compatible storage for Langfuse | — | core |
 | **Ollama** | Local LLM inference (GPU) | `11434` | gpu |
 | **Whisper** | Speech-to-text (GPU) | `9000` | gpu |
 | **ComfyUI** | Image generation / Stable Diffusion (GPU) | `8188` | gpu |
-| **Open Notebook** | NotebookLM alternative — document research | `3002` | extras |
+| **Open Notebook** | NotebookLM alternative — document research | `8502` | extras |
+| **SurrealDB** | Database for Open Notebook | — | extras |
 | **Caddy** | Reverse proxy with auto-HTTPS | `80/443` | extras |
 
 ## Prerequisites
@@ -65,29 +66,35 @@ cp .env.example .env
 #   - LITELLM_MASTER_KEY (generate a strong key)
 #   - AZURE_API_BASE, AZURE_API_KEY (your Azure OpenAI credentials)
 #   - LANGFUSE_SALT, LANGFUSE_ENCRYPTION_KEY (generate random strings)
-#   - REDIS_PASSWORD, CLICKHOUSE_PASSWORD, MINIO_ROOT_PASSWORD
+#   - REDIS_PASSWORD, CLICKHOUSE_PASSWORD, SEAWEEDFS_SECRET_KEY
 ```
 
 ### 2. Start the stack
 
 ```powershell
-# Core stack only (no GPU needed)
+# Core stack only (no GPU needed, uses cloud LLM providers)
 .\scripts\start.ps1 up core
 
 # Core + GPU services (Ollama, Whisper, ComfyUI)
 .\scripts\start.ps1 up gpu
 
-# Everything (core + GPU + Open Notebook + Caddy)
+# Core + extras (Open Notebook, Caddy)
+.\scripts\start.ps1 up extras
+
+# Everything (core + GPU + extras)
 .\scripts\start.ps1 up all
 ```
 
 Or directly with Docker Compose:
 ```bash
-# Core only
+# Core only (no GPU or local LLMs required)
 docker compose up -d
 
 # Core + GPU
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+
+# Core + extras (Open Notebook, Caddy)
+docker compose -f docker-compose.yml -f docker-compose.extras.yml up -d
 
 # All services
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.extras.yml up -d
@@ -158,13 +165,13 @@ Web search is pre-configured. In OpenWebUI:
 
 ### Speech-to-Text (Whisper)
 
-OpenWebUI includes built-in Whisper support. Click the **microphone icon** in chat to use it.
+Speech-to-text requires the **GPU stack**. When running with the GPU profile, OpenWebUI is
+automatically connected to the dedicated Whisper service for fast, GPU-accelerated transcription.
 
-For the dedicated GPU Whisper service:
-1. Start the GPU stack
-2. In OpenWebUI Admin → Settings → Audio:
-   - Set STT engine to **OpenAI**
-   - Set API URL to `http://whisper:9000/v1`
+Start the GPU stack to enable STT:
+```bash
+./scripts/start.sh up gpu
+```
 
 ### Observability (Langfuse)
 

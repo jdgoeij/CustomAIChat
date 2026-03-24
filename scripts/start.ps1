@@ -45,10 +45,10 @@ function Get-ComposeFiles {
 }
 
 try {
+    $files = Get-ComposeFiles $Profile
     switch ($Action) {
         "up" {
             Write-Host "Starting AI Stack [$Profile]..." -ForegroundColor Cyan
-            $files = Get-ComposeFiles $Profile
             & docker compose @files up -d
             Write-Host ""
             Write-Host "Stack is starting! Access points:" -ForegroundColor Green
@@ -62,17 +62,16 @@ try {
                 Write-Host "  ComfyUI:       http://localhost:8188" -ForegroundColor Yellow
             }
             if ($Profile -in @("extras", "all")) {
-                Write-Host "  Open Notebook: http://localhost:3002" -ForegroundColor Yellow
+                Write-Host "  Open Notebook: http://localhost:8502" -ForegroundColor Yellow
             }
         }
         "down" {
             Write-Host "Stopping AI Stack [$Profile]..." -ForegroundColor Cyan
-            $files = Get-ComposeFiles $Profile
             & docker compose @files down
             Write-Host "Stack stopped." -ForegroundColor Green
         }
         "status" {
-            & docker compose -f docker-compose.yml ps -a
+            & docker compose @files ps -a
         }
         "logs" {
             if ($Profile -and $Profile -ne "core") {
@@ -83,7 +82,6 @@ try {
         }
         "pull" {
             Write-Host "Pulling latest images for [$Profile]..." -ForegroundColor Cyan
-            $files = Get-ComposeFiles $Profile
             & docker compose @files pull
             Write-Host "Images updated. Run '.\start.ps1 up $Profile' to apply." -ForegroundColor Green
         }

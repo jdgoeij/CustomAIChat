@@ -12,6 +12,17 @@
 services:
 
   # ---------------------------------------------------------------------------
+  # Open WebUI — GPU overrides
+  # Enables Whisper STT and connects to the dedicated GPU Whisper service
+  # ---------------------------------------------------------------------------
+  openwebui:
+    environment:
+      AUDIO_STT_ENGINE: openai
+      AUDIO_STT_OPENAI_API_BASE_URL: http://whisper:9000/v1
+      AUDIO_STT_OPENAI_API_KEY: "dummy"
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+
+  # ---------------------------------------------------------------------------
   # Ollama — Local LLM Inference
   # Docs: https://ollama.com/
   #

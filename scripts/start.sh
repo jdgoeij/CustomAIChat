@@ -46,7 +46,7 @@ case "$ACTION" in
             echo "   ComfyUI:       http://localhost:8188"
         fi
         if [[ "$PROFILE" == "extras" || "$PROFILE" == "all" ]]; then
-            echo "   Open Notebook: http://localhost:3002"
+            echo "   Open Notebook: http://localhost:8502"
         fi
         ;;
     down)
@@ -55,7 +55,7 @@ case "$ACTION" in
         echo "✅ Stack stopped."
         ;;
     status)
-        docker compose -f docker-compose.yml ps -a
+        docker compose $FILES ps -a
         ;;
     logs)
         if [[ "$PROFILE" != "core" ]]; then

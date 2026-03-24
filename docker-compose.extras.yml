@@ -1,5 +1,5 @@
 # =============================================================================
-# Self-Hosted AI Stack — Extras (Caddy Reverse Proxy)
+# Self-Hosted AI Stack — Extras (Open Notebook, Caddy)
 # =============================================================================
 # Usage (combine with core stack):
 #   docker compose -f docker-compose.yml -f docker-compose.extras.yml up -d
@@ -8,7 +8,60 @@
 #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.extras.yml up -d
 # =============================================================================
 
+volumes:
+  surrealdb_data:
+    driver: local
+
 services:
+
+  # ---------------------------------------------------------------------------
+  # SurrealDB — Database for Open Notebook
+  # Docs: https://surrealdb.com/docs
+  # ---------------------------------------------------------------------------
+  surrealdb:
+    image: surrealdb/surrealdb:v2
+    container_name: ai-surrealdb
+    restart: unless-stopped
+    command: start --user ${SURREALDB_USER:-root} --pass ${SURREALDB_PASSWORD} --bind 0.0.0.0:8000 rocksdb:/mydata/mydatabase.db
+    volumes:
+      - surrealdb_data:/mydata
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "true"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Open Notebook — Self-hosted NotebookLM Alternative
+  # Docs: https://github.com/lfnovo/open-notebook
+  #
+  # Features: Document analysis, RAG, podcast generation, multi-LLM support
+  # Web UI: http://localhost:8502  |  API: http://localhost:5055
+  # ---------------------------------------------------------------------------
+  open-notebook:
+    image: lfnovo/open_notebook:v1-latest-single
+    container_name: ai-open-notebook
+    restart: unless-stopped
+    depends_on:
+      surrealdb:
+        condition: service_healthy
+    environment:
+      OPEN_NOTEBOOK_ENCRYPTION_KEY: ${OPEN_NOTEBOOK_ENCRYPTION_KEY}
+      SURREAL_URL: ws://surrealdb:8000/rpc
+      SURREAL_USER: ${SURREALDB_USER:-root}
+      SURREAL_PASSWORD: ${SURREALDB_PASSWORD}
+      SURREAL_NAMESPACE: open_notebook
+      SURREAL_DATABASE: open_notebook
+    volumes:
+      - ./data/open-notebook:/app/data
+    ports:
+      - "${OPEN_NOTEBOOK_PORT:-8502}:8502"
+      - "${OPEN_NOTEBOOK_API_PORT:-5055}:5055"
+    networks:
+      - frontend
+      - backend
 
   # ---------------------------------------------------------------------------
   # Caddy — Reverse Proxy with Automatic HTTPS
