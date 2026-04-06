@@ -1,0 +1,43 @@
+# =============================================================================
+# GPU Service — Whisper (Speech-to-Text)
+# =============================================================================
+# Usage:
+#   .\scripts\start.ps1 gpu-start whisper
+#   docker compose -f docker-compose.yml -f docker-compose.whisper.yml up -d
+#
+# Models (set WHISPER_ASR_MODEL in .env): tiny, base, small, medium, large-v3
+# The "base" model uses ~1 GB VRAM — safe to run alongside Ollama on 8 GB GPUs.
+# =============================================================================
+
+services:
+  # Override OpenWebUI to point STT at the dedicated Whisper service
+  openwebui:
+    environment:
+      AUDIO_STT_ENGINE: openai
+      AUDIO_STT_OPENAI_API_BASE_URL: http://whisper:9000/v1
+      AUDIO_STT_OPENAI_API_KEY: "dummy"
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+    container_name: ai-whisper
+    restart: unless-stopped
+    environment:
+      ASR_MODEL: ${WHISPER_ASR_MODEL:-base}
+      ASR_ENGINE: openai_whisper
+    volumes:
+      - ./data/whisper:/root/.cache/whisper
+    ports:
+      - "${WHISPER_PORT:-9000}:9000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - backend
+
+networks:
+  backend:

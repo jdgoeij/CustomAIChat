@@ -1,20 +1,34 @@
 # =============================================================================
-# Self-Hosted AI Stack — GPU Services
+# Self-Hosted AI Stack — All GPU Services (convenience overlay)
 # =============================================================================
-# Usage (combine with core stack):
-#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+# ⚠ This overlay starts Ollama + Whisper + ComfyUI together.
+#   On an 8 GB GPU this WILL cause VRAM pressure.
+#   Prefer the individual overlays via the start script:
+#
+#   .\scripts\start.ps1 gpu-start ollama    # local LLMs only
+#   .\scripts\start.ps1 gpu-start whisper   # speech-to-text only
+#   .\scripts\start.ps1 gpu-start comfyui   # image generation only
+#   .\scripts\start.ps1 gpu-switch comfyui  # stop Ollama, start ComfyUI
+#
+# Individual compose files:
+#   docker-compose.ollama.yml          — Ollama
+#   docker-compose.whisper.yml         — Whisper + OpenWebUI STT override
+#   docker-compose.comfyui.yml         — ComfyUI (Stable Diffusion)
+#   docker-compose.litellm-local.yml   — LiteLLM config with local models
 #
 # Prerequisites:
 #   - NVIDIA GPU with drivers installed
-#   - NVIDIA Container Toolkit: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/
+#   - NVIDIA Container Toolkit
 # =============================================================================
 
 services:
 
-  # ---------------------------------------------------------------------------
-  # Open WebUI — GPU overrides
-  # Enables Whisper STT and connects to the dedicated GPU Whisper service
-  # ---------------------------------------------------------------------------
+  # --- LiteLLM: mount the local-models config ---
+  litellm:
+    volumes:
+      - ./config/litellm/config.local.yaml:/app/config.yaml:ro
+
+  # --- OpenWebUI: enable Whisper STT ---
   openwebui:
     environment:
       AUDIO_STT_ENGINE: openai
@@ -22,15 +36,7 @@ services:
       AUDIO_STT_OPENAI_API_KEY: "dummy"
       WHISPER_MODEL: ${WHISPER_MODEL:-base}
 
-  # ---------------------------------------------------------------------------
-  # Ollama — Local LLM Inference
-  # Docs: https://ollama.com/
-  #
-  # Pull models after startup:
-  #   docker exec ai-ollama ollama pull llama3.2
-  #   docker exec ai-ollama ollama pull mistral
-  #   docker exec ai-ollama ollama pull codellama
-  # ---------------------------------------------------------------------------
+  # --- Ollama ---
   ollama:
     image: ollama/ollama:latest
     container_name: ai-ollama
@@ -49,14 +55,7 @@ services:
     networks:
       - backend
 
-  # ---------------------------------------------------------------------------
-  # Whisper — Speech-to-Text Service
-  # Image: onerahmet/openai-whisper-asr-webservice
-  # Provides OpenAI-compatible /v1/audio/transcriptions endpoint
-  #
-  # Models: tiny, base, small, medium, large-v3
-  # GPU version used for fast transcription
-  # ---------------------------------------------------------------------------
+  # --- Whisper ---
   whisper:
     image: onerahmet/openai-whisper-asr-webservice:latest-gpu
     container_name: ai-whisper
@@ -78,23 +77,13 @@ services:
     networks:
       - backend
 
-  # ---------------------------------------------------------------------------
-  # ComfyUI — AI Image Generation (Stable Diffusion)
-  # Docs: https://github.com/comfyanonymous/ComfyUI
-  #
-  # Download models before first use:
-  #   Place .safetensors files in ./data/comfyui/models/checkpoints/
-  #   Recommended: sd_xl_base_1.0.safetensors from HuggingFace
-  #
-  # Access UI: http://localhost:8188
-  # OpenWebUI connects via the ComfyUI API for image generation
-  # ---------------------------------------------------------------------------
+  # --- ComfyUI ---
   comfyui:
     image: ghcr.io/ai-dock/comfyui:latest-cuda
     container_name: ai-comfyui
     restart: unless-stopped
     environment:
-      CLI_ARGS: "--listen 0.0.0.0"
+      CLI_ARGS: "--listen 0.0.0.0 --lowvram"
     volumes:
       - ./data/comfyui/models:/workspace/ComfyUI/models
       - ./data/comfyui/output:/workspace/ComfyUI/output

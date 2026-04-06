@@ -1,0 +1,12 @@
+# =============================================================================
+# LiteLLM Override — Mount the local-models config
+# =============================================================================
+# Used together with docker-compose.ollama.yml so LiteLLM exposes Ollama
+# models in Open WebUI. When Ollama is stopped, the core config is restored
+# to avoid broken model entries.
+# =============================================================================
+
+services:
+  litellm:
+    volumes:
+      - ./config/litellm/config.local.yaml:/app/config.yaml:ro

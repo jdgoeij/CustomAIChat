@@ -1,12 +1,16 @@
 # =============================================================================
-# LiteLLM Proxy Configuration
+# LiteLLM Proxy Configuration — Local Models Enabled
 # Docs: https://docs.litellm.ai/docs/proxy/configs
 # =============================================================================
 #
-# This config defines all available models routed through LiteLLM.
-# Models appear in OpenWebUI's model selector automatically.
+# This config extends the cloud-only config.yaml with local Ollama models.
+# It is mounted automatically when you run:
+#   .\scripts\start.ps1 gpu-start ollama
 #
-# After editing, restart LiteLLM: docker compose restart litellm
+# Pull models first:
+#   docker exec ai-ollama ollama pull gemma4
+#   docker exec ai-ollama ollama pull gemma4:e2b
+#   docker exec ai-ollama ollama pull llama3.2
 # =============================================================================
 
 # --- Observability: send all calls to Langfuse ---
@@ -37,26 +41,15 @@ general_settings:
 # =============================================================================
 # MODEL DEFINITIONS
 # =============================================================================
-# Each model has:
-#   model_name:  Display name in OpenWebUI
-#   litellm_params.model:  Provider-specific model identifier
-#   litellm_params.api_base/api_key:  Connection details
-#
-# Prefix conventions:
-#   azure/   → Azure OpenAI
-#   ollama/  → Local Ollama
-#   openai/  → Direct OpenAI API
-# =============================================================================
 
 model_list:
 
   # ---------------------------------------------------------------------------
   # AZURE OPENAI MODELS
-  # Replace deployment names with your actual Azure deployment names
   # ---------------------------------------------------------------------------
   - model_name: azure/gpt-5.4-nano-2
     litellm_params:
-      model: azure/gpt-5.4-nano-2            # format: azure/<your-deployment-name>
+      model: azure/gpt-5.4-nano-2
       api_base: os.environ/AZURE_API_BASE
       api_key: os.environ/AZURE_API_KEY
       api_version: os.environ/AZURE_API_VERSION
@@ -78,7 +71,7 @@ model_list:
   # --- Azure OpenAI Image Generation ---
   - model_name: azure/gpt-image-1.5
     litellm_params:
-      model: azure/gpt-image-1.5       # Azure OpenAI deployment name
+      model: azure/gpt-image-1.5
       api_base: os.environ/AZURE_API_BASE
       api_key: os.environ/AZURE_API_KEY
       api_version: os.environ/AZURE_API_VERSION
@@ -95,12 +88,22 @@ model_list:
       mode: image_generation
 
   # ---------------------------------------------------------------------------
-  # OLLAMA — Local LLM Models
-  # ⚠ Local models are defined in config.local.yaml instead.
-  #    When you run: .\scripts\start.ps1 gpu-start ollama
-  #    LiteLLM is automatically restarted with config.local.yaml,
-  #    which adds the Ollama models to the model list.
+  # OLLAMA — Local LLM Models (private, offline-capable)
+  # These models run entirely on your hardware. No data leaves your machine.
   # ---------------------------------------------------------------------------
+
+  # Gemma 4 E2B — lighter variant (2.3B effective params)
+  # Same capabilities, fits comfortably on 8 GB GPUs (~7.2 GB on disk)
+  - model_name: gemma4:e2b
+    litellm_params:
+      model: ollama/gemma4:e2b
+      api_base: http://ollama:11434
+
+  # Llama 3.2 — Meta's compact model, fast and lightweight
+  - model_name: qwen3.5:9b
+    litellm_params:
+      model: ollama/qwen3.5:9b
+      api_base: http://ollama:11434
 
   # ---------------------------------------------------------------------------
   # OPENAI DIRECT (optional — uncomment if you have an OpenAI API key)
@@ -115,10 +118,10 @@ model_list:
 # ROUTER SETTINGS (load balancing, fallbacks)
 # =============================================================================
 router_settings:
-  routing_strategy: "cost-based-routing"  # options: "priority", "round_robin"
+  routing_strategy: "cost-based-routing"
   num_retries: 2
   timeout: 120
-  # Fallback: if Azure fails, try local Ollama (requires gpu-start ollama)
+  # Fallback: if Azure fails, try local Gemma 4
   # fallbacks:
   #   - azure/gpt-5.4-mini:
   #       - ollama/gemma4

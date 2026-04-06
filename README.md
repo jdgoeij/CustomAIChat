@@ -37,9 +37,9 @@ A comprehensive, self-hosted AI platform running on Docker — combining the bes
 | **Redis** | Caching | `6379` | core |
 | **ClickHouse** | Analytics DB for Langfuse | — | core |
 | **SeaweedFS** | S3-compatible storage for Langfuse | — | core |
-| **Ollama** | Local LLM inference (GPU) | `11434` | gpu |
-| **Whisper** | Speech-to-text (GPU) | `9000` | gpu |
-| **ComfyUI** | Image generation / Stable Diffusion (GPU) | `8188` | gpu |
+| **Ollama** | Local LLM inference (GPU) | `11434` | ollama |
+| **Whisper** | Speech-to-text (GPU) | `9000` | whisper |
+| **ComfyUI** | Image generation / Stable Diffusion (GPU) | `8188` | comfyui |
 | **Open Notebook** | NotebookLM alternative — document research | `8502` | extras |
 | **SurrealDB** | Database for Open Notebook | — | extras |
 | **Caddy** | Reverse proxy with auto-HTTPS | `80/443` | extras |
@@ -50,6 +50,7 @@ A comprehensive, self-hosted AI platform running on Docker — combining the bes
 - **8 GB RAM** minimum for core stack (16+ GB recommended with GPU services)
 - **NVIDIA GPU + NVIDIA Container Toolkit** (for GPU services only)
   - Install: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/
+- **8 GB VRAM** GPUs work well — but run only one heavy GPU service at a time (Ollama *or* ComfyUI). See [GPU Service Management](#gpu-service-management) below.
 
 ## Quick Start
 
@@ -75,7 +76,7 @@ cp .env.example .env
 # Core stack only (no GPU needed, uses cloud LLM providers)
 .\scripts\start.ps1 up core
 
-# Core + GPU services (Ollama, Whisper, ComfyUI)
+# Core + ALL GPU services (needs ≥16 GB VRAM)
 .\scripts\start.ps1 up gpu
 
 # Core + extras (Open Notebook, Caddy)
@@ -85,20 +86,23 @@ cp .env.example .env
 .\scripts\start.ps1 up all
 ```
 
-Or directly with Docker Compose:
-```bash
-# Core only (no GPU or local LLMs required)
-docker compose up -d
+For **8 GB GPUs**, start GPU services individually instead:
 
-# Core + GPU
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```powershell
+# Start the core stack first
+.\scripts\start.ps1 up core
 
-# Core + extras (Open Notebook, Caddy)
-docker compose -f docker-compose.yml -f docker-compose.extras.yml up -d
+# Then add Ollama for local LLMs (swaps LiteLLM to local config automatically)
+.\scripts\start.ps1 gpu-start ollama
 
-# All services
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.extras.yml up -d
+# Or add Whisper for speech-to-text
+.\scripts\start.ps1 gpu-start whisper
+
+# Or switch from Ollama to ComfyUI (stops Ollama first to free VRAM)
+.\scripts\start.ps1 gpu-switch comfyui
 ```
+
+See [GPU Service Management](#gpu-service-management) for the full command reference.
 
 ### 3. First-run setup
 
@@ -116,11 +120,14 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose
      ```
    - Restart LiteLLM: `docker compose restart litellm`
 
-3. **Pull local models** (if using GPU stack):
+3. **Pull local models** (if using Ollama):
    ```bash
+   # Gemma 4 — Google DeepMind's latest open model, multimodal, reasoning-capable
+   docker exec ai-ollama ollama pull gemma4         # E4B (9.6 GB, needs most of 8 GB VRAM)
+   docker exec ai-ollama ollama pull gemma4:e2b     # E2B (7.2 GB, comfortable on 8 GB)
+
+   # Lightweight alternative
    docker exec ai-ollama ollama pull llama3.2
-   docker exec ai-ollama ollama pull mistral
-   docker exec ai-ollama ollama pull codellama
    ```
 
 4. **Download Stable Diffusion models** (if using ComfyUI):
@@ -137,9 +144,17 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose
 
 ### Adding models to LiteLLM
 
-Edit `config/litellm/config.yaml` and add entries to `model_list`:
+There are two LiteLLM configs:
+
+| Config | Used when | Contains |
+|---|---|---|
+| `config/litellm/config.yaml` | Ollama is **off** (default) | Cloud models only (Azure, OpenAI) |
+| `config/litellm/config.local.yaml` | Ollama is **on** (`gpu-start ollama`) | Cloud models + local Ollama models |
+
+To add a **cloud model**, edit both files. To add a **local Ollama model**, edit only `config.local.yaml`.
 
 ```yaml
+# Example: adding a cloud model
 - model_name: azure/my-new-model
   litellm_params:
     model: azure/my-deployment-name
@@ -165,13 +180,15 @@ Web search is pre-configured. In OpenWebUI:
 
 ### Speech-to-Text (Whisper)
 
-Speech-to-text requires the **GPU stack**. When running with the GPU profile, OpenWebUI is
-automatically connected to the dedicated Whisper service for fast, GPU-accelerated transcription.
+Speech-to-text requires an NVIDIA GPU. Start Whisper individually — the script
+automatically reconfigures OpenWebUI to use the dedicated Whisper service:
 
-Start the GPU stack to enable STT:
-```bash
-./scripts/start.sh up gpu
+```powershell
+.\scripts\start.ps1 gpu-start whisper
 ```
+
+When you stop Whisper (`gpu-stop whisper`), OpenWebUI is restored to its default
+(no STT) configuration.
 
 ### Observability (Langfuse)
 
@@ -192,6 +209,37 @@ To expose the stack externally with HTTPS:
 4. Start extras: `.\scripts\start.ps1 up all`
 
 Caddy automatically obtains Let's Encrypt certificates.
+
+## GPU Service Management
+
+GPU services are split into individual overlays so you can run only what fits in
+your VRAM. On an **8 GB GPU**, run one heavy service at a time (Ollama *or*
+ComfyUI). Whisper on the `base` model (~1 GB) can run alongside either.
+
+```powershell
+# --- Start / stop individual GPU services ---
+.\scripts\start.ps1 gpu-start ollama     # Start Ollama + swap LiteLLM to local config
+.\scripts\start.ps1 gpu-start whisper    # Start Whisper + enable STT in OpenWebUI
+.\scripts\start.ps1 gpu-start comfyui    # Start ComfyUI
+
+.\scripts\start.ps1 gpu-stop ollama      # Stop Ollama + restore cloud-only LiteLLM
+.\scripts\start.ps1 gpu-stop whisper     # Stop Whisper + restore OpenWebUI defaults
+.\scripts\start.ps1 gpu-stop comfyui     # Stop ComfyUI
+
+# --- Switch between heavy services (stops the other first) ---
+.\scripts\start.ps1 gpu-switch comfyui   # Stop Ollama → start ComfyUI
+.\scripts\start.ps1 gpu-switch ollama    # Stop ComfyUI → start Ollama
+
+# --- Check what's running ---
+.\scripts\start.ps1 gpu-status
+```
+
+| Overlay file | Service | Side effects |
+|---|---|---|
+| `docker-compose.ollama.yml` | Ollama | — |
+| `docker-compose.litellm-local.yml` | — | Mounts `config.local.yaml` (adds Ollama models to LiteLLM) |
+| `docker-compose.whisper.yml` | Whisper | Overrides OpenWebUI STT env vars |
+| `docker-compose.comfyui.yml` | ComfyUI | Starts with `--lowvram` flag |
 
 ## Management
 
@@ -218,22 +266,28 @@ docker compose restart litellm
 
 ```
 CustomAIChat/
-├── .env                          # Your environment config (secrets — gitignored)
-├── .env.example                  # Template with documentation
-├── docker-compose.yml            # Core stack (always runs)
-├── docker-compose.gpu.yml        # GPU services (Ollama, Whisper, ComfyUI)
-├── docker-compose.extras.yml     # Extras (Open Notebook, Caddy)
+├── .env                              # Your environment config (secrets — gitignored)
+├── .env.example                      # Template with documentation
+├── docker-compose.yml                # Core stack (always runs)
+├── docker-compose.gpu.yml            # All GPU services at once (convenience)
+├── docker-compose.ollama.yml         # GPU overlay: Ollama only
+├── docker-compose.whisper.yml        # GPU overlay: Whisper + OpenWebUI STT
+├── docker-compose.comfyui.yml        # GPU overlay: ComfyUI (Stable Diffusion)
+├── docker-compose.litellm-local.yml  # LiteLLM override: local model config
+├── docker-compose.extras.yml         # Extras (Open Notebook, Caddy)
 ├── config/
-│   ├── litellm/config.yaml       # Model routing configuration
-│   ├── searxng/settings.yml      # Search engine settings
-│   ├── caddy/Caddyfile           # Reverse proxy routes
+│   ├── litellm/
+│   │   ├── config.yaml               # Cloud-only model routing (default)
+│   │   └── config.local.yaml         # Cloud + Ollama model routing
+│   ├── searxng/settings.yml          # Search engine settings
+│   ├── caddy/Caddyfile               # Reverse proxy routes
 │   └── postgres/init-databases.sh
-├── data/                         # Persistent volumes (gitignored)
-├── models/                       # Model weights (gitignored)
+├── data/                             # Persistent volumes (gitignored)
+├── models/                           # Model weights (gitignored)
 ├── scripts/
-│   ├── start.ps1                 # PowerShell management script
-│   └── start.sh                  # Bash management script
-└── README.md                     # This file
+│   ├── start.ps1                     # PowerShell management script
+│   └── start.sh                      # Bash management script
+└── README.md                         # This file
 ```
 
 ## Troubleshooting
@@ -260,6 +314,11 @@ docker compose ps -a            # See container status
 ### GPU services fail to start
 - Verify NVIDIA drivers: `nvidia-smi`
 - Verify Container Toolkit: `docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi`
+
+### VRAM out of memory
+- On 8 GB GPUs, run only one heavy service at a time: `.\scripts\start.ps1 gpu-switch comfyui`
+- Use Gemma 4 E2B (`gemma4:e2b`, 7.2 GB) instead of E4B if the default model is too large
+- ComfyUI starts with `--lowvram` by default; for extreme cases try `--novram` in `docker-compose.comfyui.yml`
 
 ## License
 
