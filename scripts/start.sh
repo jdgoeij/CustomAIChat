@@ -56,19 +56,29 @@ is_gpu_service_running() {
     [[ "$running_state" == "true" ]]
 }
 
+is_gpu_service_present() {
+    local result
+    result=$(docker ps -a --filter "name=$1" --format "{{.Names}}" 2>/dev/null)
+    [[ "$result" == "$1" ]]
+}
+
 stop_gpu_service() {
     local svc="$1"
     case "$svc" in
         ollama)
-            if is_gpu_service_running "ai-ollama"; then
+            local files
+            files=$(get_gpu_compose_files ollama)
+
+            if is_gpu_service_present "ai-ollama"; then
                 echo "  Stopping Ollama..."
-                local files
-                files=$(get_gpu_compose_files ollama)
-                docker compose $files stop ollama
+                if is_gpu_service_running "ai-ollama"; then
+                    docker compose $files stop ollama
+                fi
                 docker compose $files rm -f ollama
-                echo "  Restoring LiteLLM to cloud-only config..."
-                docker compose -f docker-compose.yml up -d --force-recreate litellm
             fi
+
+            echo "  Restoring LiteLLM to cloud-only config..."
+            docker compose -f docker-compose.yml up -d --force-recreate litellm
             ;;
         whisper)
             if is_gpu_service_running "ai-whisper"; then
