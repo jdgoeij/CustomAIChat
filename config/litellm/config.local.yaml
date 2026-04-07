@@ -10,7 +10,6 @@
 # Pull models first:
 #   docker exec ai-ollama ollama pull gemma4
 #   docker exec ai-ollama ollama pull gemma4:e2b
-#   docker exec ai-ollama ollama pull llama3.2
 # =============================================================================
 
 # --- Observability: send all calls to Langfuse ---
