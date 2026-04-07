@@ -73,8 +73,8 @@ function Get-GpuComposeFiles {
 
 function Test-GpuServiceRunning {
     param([string]$Container)
-    $result = docker ps --filter "name=$Container" --filter "status=running" --format "{{.Names}}" 2>$null
-    return ($result -eq $Container)
+    $result = docker inspect --format "{{.State.Running}}" $Container 2>$null
+    return ($result -eq "true")
 }
 
 function Stop-GpuService {
