@@ -1,0 +1,42 @@
+# =============================================================================
+# GPU Service — ComfyUI (AI Image Generation / Stable Diffusion)
+# =============================================================================
+# Usage:
+#   .\scripts\start.ps1 gpu-start comfyui
+#   docker compose -f docker-compose.yml -f docker-compose.comfyui.yml up -d
+#
+# Download models before first use:
+#   Place .safetensors files in ./data/comfyui/models/checkpoints/
+#   Recommended: sd_xl_base_1.0.safetensors from HuggingFace
+#
+# ⚠ SDXL needs ~6.5 GB VRAM. On an 8 GB GPU, stop Ollama first:
+#   .\scripts\start.ps1 gpu-switch comfyui
+# =============================================================================
+
+services:
+  comfyui:
+    image: ghcr.io/ai-dock/comfyui:latest-cuda
+    container_name: ai-comfyui
+    restart: unless-stopped
+    environment:
+      CLI_ARGS: "--listen 0.0.0.0 --lowvram"
+    volumes:
+      - ./data/comfyui/models:/workspace/ComfyUI/models
+      - ./data/comfyui/output:/workspace/ComfyUI/output
+      - ./data/comfyui/custom_nodes:/workspace/ComfyUI/custom_nodes
+    ports:
+      - "${COMFYUI_PORT:-8188}:8188"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - frontend
+      - backend
+
+networks:
+  frontend:
+  backend:
