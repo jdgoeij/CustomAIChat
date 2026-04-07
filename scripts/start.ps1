@@ -92,15 +92,21 @@ function Stop-GpuService {
             }
         }
         "whisper" {
+            $files = Get-GpuComposeFiles "whisper"
+            $whisperExists = @(& docker ps -a --format '{{.Names}}') -contains "ai-whisper"
+
             if (Test-GpuServiceRunning "ai-whisper") {
                 Write-Host "  Stopping Whisper..." -ForegroundColor Yellow
-                $files = Get-GpuComposeFiles "whisper"
                 & docker compose @files stop whisper
-                & docker compose @files rm -f whisper
-                # Restore OpenWebUI without STT override
-                Write-Host "  Restoring OpenWebUI without Whisper STT..." -ForegroundColor Yellow
-                & docker compose -f docker-compose.yml up -d --force-recreate openwebui
             }
+
+            if ($whisperExists) {
+                & docker compose @files rm -f whisper
+            }
+
+            # Restore OpenWebUI without STT override
+            Write-Host "  Restoring OpenWebUI without Whisper STT..." -ForegroundColor Yellow
+            & docker compose -f docker-compose.yml up -d --force-recreate openwebui
         }
         "comfyui" {
             if (Test-GpuServiceRunning "ai-comfyui") {
