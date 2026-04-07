@@ -50,9 +50,10 @@ get_gpu_compose_files() {
 # --- GPU helpers ---
 
 is_gpu_service_running() {
-    local result
-    result=$(docker ps --filter "name=$1" --filter "status=running" --format "{{.Names}}" 2>/dev/null)
-    [[ "$result" == "$1" ]]
+    local container_name="$1"
+    local running_state
+    running_state=$(docker inspect --format '{{.State.Running}}' "$container_name" 2>/dev/null || true)
+    [[ "$running_state" == "true" ]]
 }
 
 stop_gpu_service() {
