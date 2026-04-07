@@ -81,15 +81,15 @@ stop_gpu_service() {
             docker compose -f docker-compose.yml up -d --force-recreate litellm
             ;;
         whisper)
-            if is_gpu_service_running "ai-whisper"; then
+            local files
+            files=$(get_gpu_compose_files whisper)
+            if docker ps -a --filter "name=^ai-whisper$" --format "{{.Names}}" 2>/dev/null | grep -Fxq "ai-whisper"; then
                 echo "  Stopping Whisper..."
-                local files
-                files=$(get_gpu_compose_files whisper)
-                docker compose $files stop whisper
+                docker compose $files stop whisper || true
                 docker compose $files rm -f whisper
-                echo "  Restoring OpenWebUI without Whisper STT..."
-                docker compose -f docker-compose.yml up -d --force-recreate openwebui
             fi
+            echo "  Restoring OpenWebUI without Whisper STT..."
+            docker compose -f docker-compose.yml up -d --force-recreate openwebui
             ;;
         comfyui)
             if is_gpu_service_running "ai-comfyui"; then
