@@ -77,19 +77,25 @@ function Test-GpuServiceRunning {
     return ($result -eq "true")
 }
 
+function Test-GpuServiceExists {
+    param([string]$Container)
+    $result = docker ps -a --filter "name=$Container" --format "{{.Names}}" 2>$null
+    return ($result -eq $Container)
+}
+
 function Stop-GpuService {
     param([string]$Service)
     switch ($Service) {
         "ollama" {
-            if (Test-GpuServiceRunning "ai-ollama") {
+            $files = Get-GpuComposeFiles "ollama"
+            if (Test-GpuServiceExists "ai-ollama") {
                 Write-Host "  Stopping Ollama..." -ForegroundColor Yellow
-                $files = Get-GpuComposeFiles "ollama"
                 & docker compose @files stop ollama
                 & docker compose @files rm -f ollama
-                # Restore LiteLLM to cloud-only config
-                Write-Host "  Restoring LiteLLM to cloud-only config..." -ForegroundColor Yellow
-                & docker compose -f docker-compose.yml up -d --force-recreate litellm
             }
+            # Restore LiteLLM to cloud-only config
+            Write-Host "  Restoring LiteLLM to cloud-only config..." -ForegroundColor Yellow
+            & docker compose -f docker-compose.yml up -d --force-recreate litellm
         }
         "whisper" {
             $files = Get-GpuComposeFiles "whisper"
