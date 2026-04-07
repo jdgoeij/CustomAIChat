@@ -7,7 +7,7 @@
 #   ./scripts/start.sh up gpu        # Start core + ALL GPU services
 #   ./scripts/start.sh up all        # Start everything
 #   ./scripts/start.sh down all      # Stop everything
-#   ./scripts/start.sh status        # Show running containers
+#   ./scripts/start.sh status all    # Show running containers
 #   ./scripts/start.sh logs openwebui # Follow logs for a service
 #   ./scripts/start.sh pull all      # Pull latest images
 #
